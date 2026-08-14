@@ -26,26 +26,15 @@ public class Subscription {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long subscriptionId;
+    private Long id;
 
     @ManyToOne
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
     @ManyToOne
-    @JoinColumn(name = "mealkit_id")
+    @JoinColumn(name = "mealkit_id", nullable = false)
     private Mealkit mealkit;
 
-    @ManyToOne
-    @JoinColumn(name = "mealplan_id")
-    private Mealplan mealplan;
-
     private Instant subscribedAt;
-
-    public Subscription(Customer customer, Mealkit mealkit, Mealplan mealplan, Instant subscribedAt) {
-        this.customer = customer;
-        this.mealkit = mealkit;
-        this.mealplan = mealplan;
-        this.subscribedAt = subscribedAt;
-    }
 }

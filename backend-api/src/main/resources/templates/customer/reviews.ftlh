@@ -11,15 +11,19 @@
 
     <div class="dashboard-container">
         <h3>My Reviews</h3>
+        <p>Review your saved recipes and meal plans, and the meal kits you subscribe to.</p>
 
         <div class="card-grid">
             <#list reviewCards as rc>
-                <div class="service-card" data-id="${rc.recipe().id()?c}">
+                <div class="service-card" data-id="${rc.content().id()?c}">
                     <div class="card-body">
-                        <h4>${rc.recipe().title()}</h4>
-                        <p class="provider-name">by ${rc.recipe().providerName()}</p>
+                        <h4>${rc.content().title()}</h4>
+                        <p class="provider-name">by ${rc.content().providerName()}</p>
+                        <div class="card-tags">
+                            <span class="tag-pill small type-pill">${rc.content().type()?cap_first}</span>
+                        </div>
                     </div>
-                    <form class="review-form" method="post" action="/customer/${customerId}/reviews/${rc.recipe().id()?c}">
+                    <form class="review-form" method="post" action="/customer/${customerId?c}/reviews/${rc.content().type()}/${rc.content().id()?c}">
                         <label>Your Rating</label>
                         <select class="review-rating" name="rating">
                             <option value="5" <#if rc.existingRating()?? && rc.existingRating() == 5>selected</#if>>5 - Excellent</option>
@@ -39,7 +43,7 @@
         </div>
 
         <#if reviewCards?size == 0>
-            <p class="no-subscriptions">You haven't subscribed to any recipes yet. <a href="/customer/${customerId}/dashboard">Browse recipes</a></p>
+            <p class="no-subscriptions">Save a recipe or meal plan, or subscribe to a meal kit, to review it. <a href="/customer/${customerId?c}/dashboard">Browse content</a></p>
         </#if>
     </div>
 </body>

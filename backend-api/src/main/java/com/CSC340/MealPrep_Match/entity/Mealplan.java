@@ -16,22 +16,24 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
-@Table(name = "mealplan")
-@Data
+@Table(name = "mealplans")
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Mealplan {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne
-    @JsonIgnoreProperties({ "mealplan" })
+    @JsonIgnoreProperties({ "mealplans" })
     @JoinColumn(nullable = false)
     private Provider provider;
 
@@ -44,28 +46,16 @@ public class Mealplan {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    private String category;
-    private Double price;
+    @Column(columnDefinition = "TEXT")
+    private String schedule;
 
-    
+    private String category;
+
     @ManyToMany
     @JoinTable(
-            name = "mealplan_recipe",
+            name = "mealplan_recipes",
             joinColumns = @JoinColumn(name = "mealplan_id"),
             inverseJoinColumns = @JoinColumn(name = "recipe_id"))
     @JsonIgnore
-    private List<Recipe> recipe;
-
-    @ManyToMany(mappedBy = "mealplan")
-    @JsonIgnore
-    private List<Mealkit> mealkit;
-
-
-    public Mealplan(Provider provider, String title, String duration, String description, String category, Double price) {
-        this.provider = provider;
-        this.title = title;
-        this.duration = duration;
-        this.category = category;
-        this.price = price;
-    }
+    private List<Recipe> recipes;
 }

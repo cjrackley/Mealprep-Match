@@ -363,3 +363,82 @@ body {
 .subscribe-btn.subscribed:hover {
     background-color: #256b44;
 }
+
+.section-title {
+    font-size: 20px;
+    margin: 30px 0 14px 0;
+}
+
+.card-description {
+    margin: 10px 0 0 0;
+    font-size: 13px;
+    color: #444444;
+}
+
+.type-pill {
+    background-color: #2e6ab5;
+    color: #ffffff;
+}
+
+.card-link {
+    display: block;
+    text-align: center;
+    text-decoration: none;
+}
+
+.search-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+}
+
+.search-bar input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #d9d9d9;
+    border-radius: 4px;
+}
+
+.search-bar .register-btn {
+    display: inline-block;
+    width: auto;
+    margin-top: 0;
+    padding: 10px 24px;
+}
+
+.provider-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 12px;
+}
+
+.provider-header h3,
+.provider-header h4 {
+    margin: 0 0 4px 0;
+}
+
+.provider-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.provider-avatar.large {
+    width: 84px;
+    height: 84px;
+}
+
+.verified-badge {
+    display: inline-block;
+    background-color: #2e8b57;
+    color: #ffffff;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+}
+
+.provider-public-profile {
+    max-width: 480px;
+}

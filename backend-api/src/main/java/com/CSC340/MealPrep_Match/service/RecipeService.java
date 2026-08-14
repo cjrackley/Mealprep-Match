@@ -26,6 +26,10 @@ public class RecipeService {
         return recipeRepository.findByTag(tag);
     }
 
+    public List<Recipe> getByProviderId(Long providerId) {
+        return recipeRepository.findByProvider_Id(providerId);
+    }
+
     public Recipe getById(Long id) {
         return recipeRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found: " + id));
@@ -52,10 +56,6 @@ public class RecipeService {
         return recipeRepository.save(recipe);
     }
 
-    public void delete(Long id) {
-        if (!recipeRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found: " + id);
-        }
-        recipeRepository.deleteById(id);
-    }
+    // Deletion lives in ContentDeletionService: a bare deleteById here would fail on the
+    // foreign keys from mealplan_recipes, mealkit_recipes, saves and reviews.
 }

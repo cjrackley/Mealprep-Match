@@ -2,16 +2,18 @@ package com.CSC340.MealPrep_Match.service;
 
 import java.io.InputStream;
 import java.sql.Blob;
+import java.time.YearMonth;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.CSC340.MealPrep_Match.repository.ProviderRepository;
 import com.CSC340.MealPrep_Match.repository.ReviewRepository;
@@ -33,25 +35,27 @@ public class ProviderService {
     private final SubscriptionRepository subscriptionRepository;
     private final SaveRepository saveRepository;
     private final ReviewRepository reviewRepository;
-    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final PasswordEncoder passwordEncoder;
 
     public ProviderService(ProviderRepository providerRepository, SubscriptionRepository subscriptionRepository,
-            SaveRepository saveRepository, ReviewRepository reviewRepository) {
+            SaveRepository saveRepository, ReviewRepository reviewRepository, PasswordEncoder passwordEncoder) {
         this.providerRepository = providerRepository;
         this.subscriptionRepository = subscriptionRepository;
         this.saveRepository = saveRepository;
         this.reviewRepository = reviewRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
-    public List<Provider> getAllProviders() {
+    public List<Provider> getAll() {
         return providerRepository.findAll();
     }
 
-    public Provider findById(long id) {
-        return providerRepository.findById(id).orElse(null);
+    public Provider getById(Long id) {
+        return providerRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Provider not found: " + id));
     }
 
-    public Provider createProvider(Provider provider) {
+    public Provider create(Provider provider) {
         provider.setPasswordHash(passwordEncoder.encode(provider.getPassword()));
         provider.setPassword(null);
         return providerRepository.save(provider);
@@ -61,62 +65,59 @@ public class ProviderService {
         return passwordEncoder.matches(rawPassword, provider.getPasswordHash());
     }
 
-    public Provider updateProviderInfo(Long id, Provider updatedProvider) {
-        Optional<Provider> existingProvider = providerRepository.findById(id);
-        if (existingProvider.isPresent()) {
-            Provider provider = existingProvider.get();
-            if (updatedProvider.getName() != null) {
-                provider.setName(updatedProvider.getName());
-            }
-            if (updatedProvider.getEmail() != null) {
-                provider.setEmail(updatedProvider.getEmail());
-            }
-            if (updatedProvider.getPassword() != null) {
-                provider.setPasswordHash(passwordEncoder.encode(updatedProvider.getPassword()));
-            }
-            if (updatedProvider.getBio() != null) {
-                provider.setBio(updatedProvider.getBio());
-            }
-            if (updatedProvider.getSpecialties() != null) {
-                provider.setSpecialties(updatedProvider.getSpecialties());
-            }
-            if (updatedProvider.getCertified() != null) {
-                provider.setCertified(updatedProvider.getCertified());
-            }
-            return providerRepository.save(provider);
-        } else {
-            throw new RuntimeException("Provider not found with id: " + id);
+    public Provider update(Long id, Provider updates) {
+        Provider provider = getById(id);
+        if (updates.getName() != null) {
+            provider.setName(updates.getName());
         }
+        if (updates.getEmail() != null) {
+            provider.setEmail(updates.getEmail());
+        }
+        if (updates.getPassword() != null) {
+            provider.setPasswordHash(passwordEncoder.encode(updates.getPassword()));
+        }
+        if (updates.getBio() != null) {
+            provider.setBio(updates.getBio());
+        }
+        if (updates.getSpecialties() != null) {
+            provider.setSpecialties(updates.getSpecialties());
+        }
+        if (updates.getVerified() != null) {
+            provider.setVerified(updates.getVerified());
+        }
+        return providerRepository.save(provider);
     }
 
     @Transactional
     public ProviderStats getProviderStats(Long providerId) {
-        Provider provider = providerRepository.findById(providerId)
-                .orElseThrow(() -> new RuntimeException("Provider not found with id: " + providerId));
+        Provider provider = getById(providerId);
 
-        long contentCount = provider.getRecipe().size()
-                + provider.getMealplan().size()
-                + provider.getMealkit().size();
+        long contentCount = provider.getRecipes().size()
+                + provider.getMealplans().size()
+                + provider.getMealkits().size();
 
-        List<Subscription> mealkitSubs = subscriptionRepository.findByMealkit_Provider_Id(providerId);
-        List<Subscription> mealplanSubs = subscriptionRepository.findByMealplan_Provider_Id(providerId);
+        List<Subscription> subscriptions = subscriptionRepository.findByMealkit_Provider_Id(providerId);
+        long subscriptionCount = subscriptions.size();
 
-        long subscriptionCount = mealkitSubs.size() + mealplanSubs.size();
-
-        double totalRevenue = mealkitSubs.stream()
+        double totalRevenue = subscriptions.stream()
                 .map(s -> s.getMealkit().getPrice())
                 .filter(Objects::nonNull)
                 .mapToDouble(Double::doubleValue)
-                .sum()
-                + mealplanSubs.stream()
-                        .map(s -> s.getMealplan().getPrice())
-                        .filter(Objects::nonNull)
-                        .mapToDouble(Double::doubleValue)
-                        .sum();
+                .sum();
 
-        long saveCount = saveRepository.findByRecipe_Provider_Id(providerId).size();
+        YearMonth thisMonth = YearMonth.now(ZoneOffset.UTC);
+        double monthlyRevenue = subscriptions.stream()
+                .filter(s -> s.getSubscribedAt() != null
+                        && YearMonth.from(s.getSubscribedAt().atZone(ZoneOffset.UTC)).equals(thisMonth))
+                .map(s -> s.getMealkit().getPrice())
+                .filter(Objects::nonNull)
+                .mapToDouble(Double::doubleValue)
+                .sum();
 
-        List<Review> reviews = reviewRepository.findByRecipe_Provider_Id(providerId);
+        long saveCount = saveRepository.findByRecipe_Provider_Id(providerId).size()
+                + saveRepository.findByMealplan_Provider_Id(providerId).size();
+
+        List<Review> reviews = getProviderReviews(providerId);
         long reviewCount = reviews.size();
 
         double averageRating = reviews.stream()
@@ -125,57 +126,54 @@ public class ProviderService {
                 .orElse(0.0);
 
         return new ProviderStats(averageRating, reviewCount, subscriptionCount, contentCount, saveCount,
-                totalRevenue);
+                totalRevenue, monthlyRevenue);
+    }
+
+    @Transactional
+    public List<UploadSummary> getAllUploads(Long providerId) {
+        Provider provider = getById(providerId);
+
+        List<UploadSummary> uploads = new ArrayList<>();
+        provider.getRecipes().forEach(r -> uploads.add(new UploadSummary("Recipe", r.getTitle(), r.getId(),
+                r.getTags() != null ? r.getTags() : List.of())));
+        provider.getMealplans().forEach(m -> uploads.add(new UploadSummary("Mealplan", m.getTitle(), m.getId(),
+                m.getCategory() != null ? List.of(m.getCategory()) : List.of())));
+        provider.getMealkits().forEach(k -> uploads.add(new UploadSummary("Mealkit", k.getTitle(), k.getId(),
+                k.getCategory() != null ? List.of(k.getCategory()) : List.of())));
+
+        return uploads.stream()
+                .sorted(Comparator.comparing(UploadSummary::getId).reversed())
+                .toList();
     }
 
     @Transactional
     public List<UploadSummary> getRecentUploads(Long providerId, int limit) {
-        Provider provider = providerRepository.findById(providerId)
-                .orElseThrow(() -> new RuntimeException("Provider not found with id: " + providerId));
-
-        List<UploadSummary> uploads = new ArrayList<>();
-        provider.getRecipe().forEach(r -> uploads.add(new UploadSummary("Recipe", r.getTitle(), r.getRecipeId(),
-                r.getTags() != null ? r.getTags() : List.of())));
-        provider.getMealplan().forEach(m -> uploads.add(new UploadSummary("Mealplan", m.getTitle(), m.getId(),
-                m.getCategory() != null ? List.of(m.getCategory()) : List.of())));
-        provider.getMealkit().forEach(k -> uploads.add(new UploadSummary("Mealkit", k.getTitle(), k.getId(),
-                k.getCategory() != null ? List.of(k.getCategory()) : List.of())));
-
-        return uploads.stream()
-                .sorted(Comparator.comparing(UploadSummary::getId).reversed())
+        return getAllUploads(providerId).stream()
                 .limit(limit)
                 .toList();
     }
 
-    public List<UploadSummary> getAllUploads(Long providerId) {
-        Provider provider = providerRepository.findById(providerId)
-                .orElseThrow(() -> new RuntimeException("Provider not found with id: " + providerId));
-
-        List<UploadSummary> uploads = new ArrayList<>();
-
-        provider.getRecipe().forEach(r -> uploads.add(new UploadSummary("Recipe", r.getTitle(), r.getRecipeId(),
-                r.getTags() != null ? r.getTags() : List.of())));
-        provider.getMealplan().forEach(m -> uploads.add(new UploadSummary("Mealplan", m.getTitle(), m.getId(),
-                m.getCategory() != null ? List.of(m.getCategory()) : List.of())));
-        provider.getMealkit().forEach(k -> uploads.add(new UploadSummary("Mealkit", k.getTitle(), k.getId(),
-                k.getCategory() != null ? List.of(k.getCategory()) : List.of())));
-
-        return uploads.stream()
-                .sorted(Comparator.comparing(UploadSummary::getId).reversed())
-                .toList();
-
-    }
-
     @Transactional
     public List<Review> getRecentReviews(Long providerId, int limit) {
-        return reviewRepository.findByRecipe_Provider_Id(providerId).stream()
+        return getProviderReviews(providerId).stream()
                 .sorted(Comparator.comparing(Review::getCreatedAt,
                         Comparator.nullsLast(Comparator.reverseOrder())))
                 .limit(limit)
                 .toList();
     }
 
-    public void deleteProvider(long id) {
+    private List<Review> getProviderReviews(Long providerId) {
+        List<Review> reviews = new ArrayList<>();
+        reviews.addAll(reviewRepository.findByRecipe_Provider_Id(providerId));
+        reviews.addAll(reviewRepository.findByMealplan_Provider_Id(providerId));
+        reviews.addAll(reviewRepository.findByMealkit_Provider_Id(providerId));
+        return reviews;
+    }
+
+    public void delete(Long id) {
+        if (!providerRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Provider not found: " + id);
+        }
         providerRepository.deleteById(id);
     }
 
@@ -184,7 +182,7 @@ public class ProviderService {
     }
 
     public List<Provider> findBySpecialty(String specialty) {
-        return providerRepository.findBySpecialtiesContainingIgnoreCase(specialty);
+        return providerRepository.findBySpecialty(specialty);
     }
 
     public InputStream getProviderImageStreamInsideTx(Long providerId) {
@@ -197,20 +195,21 @@ public class ProviderService {
                 return defaultImage.getInputStream();
             }
         } catch (Exception e) {
-            throw new RuntimeException("Error retrieving picture for provider with id: " + providerId, e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Error retrieving picture for provider with id: " + providerId, e);
         }
     }
 
     @Transactional
     public void saveProviderProfilePicture(Long providerId, InputStream profilePictureStream) {
-        Provider provider = providerRepository.findById(providerId)
-                .orElseThrow(() -> new RuntimeException("Provider not found with id:" + providerId));
+        Provider provider = getById(providerId);
         try {
             Blob profilePictureBlob = new javax.sql.rowset.serial.SerialBlob(profilePictureStream.readAllBytes());
             provider.setProfilePicture(profilePictureBlob);
             providerRepository.save(provider);
         } catch (Exception e) {
-            throw new RuntimeException("Error saving profile picture for provider with id: " + providerId, e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Error saving profile picture for provider with id: " + providerId, e);
         }
     }
 

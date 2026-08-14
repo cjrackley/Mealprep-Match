@@ -46,7 +46,7 @@
                 <h4>Specialties</h4>
                 <div class="profile-card">
                     <input type="text" class="profile-input" id="specialties" name="specialties"
-                        value="${provider.specialties!''}"
+                        value="<#if provider.specialties??>${provider.specialties?join(', ')}</#if>"
                         placeholder="e.g. Vegan Friendly, Meal Plans, Recipes">
                     <small>Separate specialties with commas. Leave blank if you have none.</small>
                 </div>

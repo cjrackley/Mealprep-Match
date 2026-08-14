@@ -45,8 +45,8 @@
             <div class="profile-card">
                 <div class="tag-list">
                     <#if provider.specialties?? && provider.specialties?has_content>
-                        <#list provider.specialties?split(",") as specialty>
-                            <span class="tag">${specialty?trim}</span>
+                        <#list provider.specialties as specialty>
+                            <span class="tag">${specialty}</span>
                         </#list>
                     <#else>
                         <span class="tag-empty">No specialties listed</span>

@@ -12,8 +12,8 @@
         <p>Continue as a customer or a provider</p>
 
         <div class="role-buttons">
-            <a href="customer-login.html" class="role-btn customer-btn">I'm a Customer</a>
-            <a href="../provider-prototype/provider-login.html" class="role-btn provider-btn">I'm a Provider</a>
+            <a href="/customer/login" class="role-btn customer-btn">I'm a Customer</a>
+            <a href="/provider/login" class="role-btn provider-btn">I'm a Provider</a>
         </div>
     </div>
 </body>

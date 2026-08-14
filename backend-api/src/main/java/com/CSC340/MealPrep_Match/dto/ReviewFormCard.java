@@ -1,7 +1,7 @@
-package com.CSC340.MealPrep_Match.model;
+package com.CSC340.MealPrep_Match.dto;
 
 public record ReviewFormCard(
-        RecipeCard recipe,
+        ContentCard content,
         Integer existingRating,
         String existingComment) {
 }

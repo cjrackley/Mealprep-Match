@@ -13,4 +13,6 @@ public class ProviderStats {
     private long contentCount;
     private long saveCount;
     private double totalRevenue;
+    /** Revenue from subscriptions started in the current calendar month (UTC). */
+    private double monthlyRevenue;
 }

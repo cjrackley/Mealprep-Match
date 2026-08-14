@@ -1,87 +1,86 @@
 classDiagram
     class Provider {
-        -providerId: Long
+        -id: Long
         -name: String
         -email: String
         -passwordHash: String
+        -profilePicture: Blob
         -bio: String
         -specialties: List~String~
         -verified: Boolean
-        +createProfile()
         +publishRecipe(recipe: Recipe)
         +publishMealplan(plan: Mealplan)
         +publishMealkit(kit: Mealkit)
-        +viewStatistics() Statistics
+        +viewStatistics() ProviderStats
         +replyToReview(review: Review, reply: String)
     }
 
     class Customer {
-        -customerId: Long
+        -id: Long
         -name: String
         -email: String
         -passwordHash: String
         -dietaryPreferences: List~String~
-        +createProfile()
-        +browseServices(tag: String) List
-        +subscribe(kit: Mealkit)
+        +browseContent(tag: String) List
+        +searchProviders(specialty: String) List~Provider~
+        +save(target: Recipe or Mealplan) Save
+        +subscribe(kit: Mealkit) Subscription
         +writeReview(target, rating: Integer, comment: String) Review
     }
 
     class Recipe {
-        -recipeId: Long
+        -id: Long
         -title: String
         -ingredients: List~String~
         -instructions: String
         -tags: List~String~
-        -price: Double
         +getDetails()
     }
 
     class Mealplan {
-        -mealplanId: Long
+        -id: Long
         -title: String
         -duration: String
-        -tags: List~String~
-        -price: Double
+        -schedule: String
         -description: String
+        -category: String
         +addRecipe(recipe: Recipe)
         +getSchedule()
     }
 
     class Mealkit {
-        -mealkitId: Long
+        -id: Long
         -title: String
-        -deliveryFrequency: String
-        -tags: List~String~
-        -price: Double
+        -duration: String
         -description: String
-        +addSubscriber(customer: Customer)
-        +getStats() Statistics
+        -category: String
+        -price: Double
+        -ingredients: List~String~
+        +addRecipe(recipe: Recipe)
+        +getStats() ProviderStats
     }
 
     class Review {
-        -reviewId: Long
+        -id: Long
         -rating: Integer
         -comment: String
+        -createdAt: Instant
         -providerReply: String
-        -createdAt: Date
+        -repliedAt: Instant
         +submit()
         +addProviderReply(reply: String)
     }
 
     class Subscription {
-        -sub_id: Long
-        -customer_id: Long
-        -mealkit_id: Long
+        -id: Long
+        -subscribedAt: Instant
         +subscribe()
         +cancel()
     }
 
     class Save {
-        -save_id: Long
-        -customer_id: Long
-        -recipe_id: Long
-        -mealplan_id: Long
+        -id: Long
+        -savedAt: Instant
         +save()
         +remove()
     }
@@ -90,17 +89,17 @@ classDiagram
     Provider "1" --> "0..*" Mealplan : publishes
     Provider "1" --> "0..*" Mealkit : publishes
 
-    Mealplan "1" o-- "1..*" Recipe : includes
-    Mealkit "1" o-- "1..*" Recipe : presets
+    Mealplan "0..*" o-- "0..*" Recipe : includes
+    Mealkit "0..*" o-- "0..*" Recipe : presets
 
-    Customer "1" --> "0..*" Review : writes
     Customer "1" --> "0..*" Subscription : has
-    Subscription "0..*" --> "1" Mealkit : for
+    Subscription "0..*" --> "1" Mealkit : for (paid content)
 
     Customer "1" --> "0..*" Save : has
-    Save "0..*" --> "0..1" Recipe : saves
-    Save "0..*" --> "0..1" Mealplan : saves
+    Save "0..*" --> "0..1" Recipe : saves (exactly one target)
+    Save "0..*" --> "0..1" Mealplan : saves (exactly one target)
 
-    Review "0..*" --> "0..1" Recipe : reviews
-    Review "0..*" --> "0..1" Mealplan : reviews
-    Review "0..*" --> "0..1" Mealkit : reviews
+    Customer "1" --> "0..*" Review : writes
+    Review "0..*" --> "0..1" Recipe : reviews (exactly one target)
+    Review "0..*" --> "0..1" Mealplan : reviews (exactly one target)
+    Review "0..*" --> "0..1" Mealkit : reviews (subscribers only)

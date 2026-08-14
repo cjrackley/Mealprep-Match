@@ -12,4 +12,6 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
 
     @Query("SELECT DISTINCT r FROM Recipe r JOIN r.tags t WHERE LOWER(t) = LOWER(:tag)")
     List<Recipe> findByTag(@Param("tag") String tag);
+
+    List<Recipe> findByProvider_Id(Long providerId);
 }
