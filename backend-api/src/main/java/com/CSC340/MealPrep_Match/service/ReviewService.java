@@ -7,13 +7,18 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.CSC340.MealPrep_Match.entity.Customer;
+import com.CSC340.MealPrep_Match.entity.Mealkit;
+import com.CSC340.MealPrep_Match.entity.Mealplan;
+import com.CSC340.MealPrep_Match.entity.Provider;
 import com.CSC340.MealPrep_Match.entity.Recipe;
 import com.CSC340.MealPrep_Match.entity.Review;
-import com.CSC340.MealPrep_Match.entity.Customer;
 import com.CSC340.MealPrep_Match.repository.CustomerRepository;
+import com.CSC340.MealPrep_Match.repository.MealkitRepository;
+import com.CSC340.MealPrep_Match.repository.MealplanRepository;
 import com.CSC340.MealPrep_Match.repository.RecipeRepository;
 import com.CSC340.MealPrep_Match.repository.ReviewRepository;
-import com.CSC340.MealPrep_Match.repository.SaveRepository;
+import com.CSC340.MealPrep_Match.repository.SubscriptionRepository;
 
 @Service
 public class ReviewService {
@@ -21,14 +26,19 @@ public class ReviewService {
     private final ReviewRepository reviewRepository;
     private final CustomerRepository customerRepository;
     private final RecipeRepository recipeRepository;
-    private final SaveRepository saveRepository;
+    private final MealplanRepository mealplanRepository;
+    private final MealkitRepository mealkitRepository;
+    private final SubscriptionRepository subscriptionRepository;
 
     public ReviewService(ReviewRepository reviewRepository, CustomerRepository customerRepository,
-            RecipeRepository recipeRepository, SaveRepository saveRepository) {
+            RecipeRepository recipeRepository, MealplanRepository mealplanRepository,
+            MealkitRepository mealkitRepository, SubscriptionRepository subscriptionRepository) {
         this.reviewRepository = reviewRepository;
         this.customerRepository = customerRepository;
         this.recipeRepository = recipeRepository;
-        this.saveRepository = saveRepository;
+        this.mealplanRepository = mealplanRepository;
+        this.mealkitRepository = mealkitRepository;
+        this.subscriptionRepository = subscriptionRepository;
     }
 
     public List<Review> getAll() {
@@ -36,11 +46,19 @@ public class ReviewService {
     }
 
     public List<Review> getByRecipe(Long recipeId) {
-        return reviewRepository.findByRecipe_RecipeId(recipeId);
+        return reviewRepository.findByRecipe_Id(recipeId);
+    }
+
+    public List<Review> getByMealplan(Long mealplanId) {
+        return reviewRepository.findByMealplan_Id(mealplanId);
+    }
+
+    public List<Review> getByMealkit(Long mealkitId) {
+        return reviewRepository.findByMealkit_Id(mealkitId);
     }
 
     public List<Review> getByCustomer(Long customerId) {
-        return reviewRepository.findByCustomer_CustomerId(customerId);
+        return reviewRepository.findByCustomer_Id(customerId);
     }
 
     public Review getById(Long id) {
@@ -49,28 +67,49 @@ public class ReviewService {
     }
 
     public Review create(Review review) {
-        if (review.getCustomer() == null || review.getCustomer().getCustomerId() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "customer.customerId is required");
-        }
-        if (review.getRecipe() == null || review.getRecipe().getRecipeId() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "recipe.recipeId is required");
+        if (review.getCustomer() == null || review.getCustomer().getId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "customer.id is required");
         }
 
-        Customer customer = customerRepository.findById(review.getCustomer().getCustomerId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Customer not found: " + review.getCustomer().getCustomerId()));
-        Recipe recipe = recipeRepository.findById(review.getRecipe().getRecipeId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Recipe not found: " + review.getRecipe().getRecipeId()));
+        boolean hasRecipe = review.getRecipe() != null && review.getRecipe().getId() != null;
+        boolean hasMealplan = review.getMealplan() != null && review.getMealplan().getId() != null;
+        boolean hasMealkit = review.getMealkit() != null && review.getMealkit().getId() != null;
+        int targetCount = (hasRecipe ? 1 : 0) + (hasMealplan ? 1 : 0) + (hasMealkit ? 1 : 0);
+        if (targetCount != 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Provide exactly one of recipe.id, mealplan.id, or mealkit.id");
+        }
 
-        if (!saveRepository.existsByCustomer_CustomerIdAndRecipe_RecipeId(customer.getCustomerId(),
-                recipe.getRecipeId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Customer must save this recipe before reviewing it");
+        Customer customer = customerRepository.findById(review.getCustomer().getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Customer not found: " + review.getCustomer().getId()));
+
+        Recipe recipe = null;
+        Mealplan mealplan = null;
+        Mealkit mealkit = null;
+        if (hasRecipe) {
+            recipe = recipeRepository.findById(review.getRecipe().getId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "Recipe not found: " + review.getRecipe().getId()));
+        } else if (hasMealplan) {
+            mealplan = mealplanRepository.findById(review.getMealplan().getId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "Mealplan not found: " + review.getMealplan().getId()));
+        } else {
+            mealkit = mealkitRepository.findById(review.getMealkit().getId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "Mealkit not found: " + review.getMealkit().getId()));
+            // Mealkits are paid content: only subscribers may review them.
+            if (!subscriptionRepository.existsByCustomer_IdAndMealkit_Id(customer.getId(), mealkit.getId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                        "Customer must be subscribed to this mealkit before reviewing it");
+            }
         }
 
         review.setCustomer(customer);
         review.setRecipe(recipe);
+        review.setMealplan(mealplan);
+        review.setMealkit(mealkit);
         review.setCreatedAt(Instant.now());
         return reviewRepository.save(review);
     }
@@ -89,10 +128,17 @@ public class ReviewService {
     public Review reply(Long reviewId, Long providerId, String replyText) {
         Review review = getById(reviewId);
 
-        Long ownerId = review.getRecipe().getProvider().getId();
-        if (!ownerId.equals(providerId)) {
+        Provider owner;
+        if (review.getRecipe() != null) {
+            owner = review.getRecipe().getProvider();
+        } else if (review.getMealplan() != null) {
+            owner = review.getMealplan().getProvider();
+        } else {
+            owner = review.getMealkit().getProvider();
+        }
+        if (owner == null || !owner.getId().equals(providerId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Only the provider of this recipe can reply to its reviews");
+                    "Only the provider of this content can reply to its reviews");
         }
 
         review.setProviderReply(replyText);

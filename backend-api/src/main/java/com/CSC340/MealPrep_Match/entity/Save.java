@@ -26,21 +26,20 @@ public class Save {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long saveId;
+    private Long id;
 
     @ManyToOne
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
+    // Exactly one of recipe or mealplan is set (enforced in SaveService).
     @ManyToOne
-    @JoinColumn(name = "recipe_id", nullable = false)
+    @JoinColumn(name = "recipe_id")
     private Recipe recipe;
 
-    private Instant savedAt;
+    @ManyToOne
+    @JoinColumn(name = "mealplan_id")
+    private Mealplan mealplan;
 
-    public Save(Customer customer, Recipe recipe, Instant savedAt) {
-        this.customer = customer;
-        this.recipe = recipe;
-        this.savedAt = savedAt;
-    }
+    private Instant savedAt;
 }

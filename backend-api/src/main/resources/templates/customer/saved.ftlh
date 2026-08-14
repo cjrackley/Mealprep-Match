@@ -3,26 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Subscriptions</title>
+    <title>Saved</title>
     <link rel="stylesheet" href="/style.css">
 </head>
 <body class="dashboard-body">
     <#include "_navbar.ftlh">
     <#import "_content_card.ftlh" as cards>
-    <#assign redirect = "/customer/" + customerId?c + "/subscriptions">
+    <#assign redirect = "/customer/" + customerId?c + "/saved">
 
     <div class="dashboard-container">
-        <h3>My Subscriptions</h3>
-        <p>Meal kits you are subscribed to.</p>
+        <h3>Saved</h3>
+        <p>Recipes and meal plans you have saved.</p>
 
         <div class="card-grid">
-            <#list subscriptions as card>
+            <#list savedCards as card>
                 <@cards.contentCard card=card customerId=customerId redirect=redirect />
             </#list>
         </div>
 
-        <#if subscriptions?size == 0>
-            <p class="no-subscriptions">You haven't subscribed to any meal kits yet. <a href="/customer/${customerId?c}/dashboard">Browse meal kits</a></p>
+        <#if savedCards?size == 0>
+            <p class="no-subscriptions">You haven't saved anything yet. <a href="/customer/${customerId?c}/dashboard">Browse content</a></p>
         </#if>
     </div>
 </body>

@@ -33,7 +33,7 @@ public class Recipe {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long recipeId;
+    private Long id;
 
     @Column(nullable = false)
     private String title;
@@ -52,17 +52,11 @@ public class Recipe {
     private List<String> tags;
 
     @ManyToOne
-    @JsonIgnoreProperties({ "recipe" })
+    @JsonIgnoreProperties({ "recipes" })
     @JoinColumn
     private Provider provider;
 
-    @ManyToMany(mappedBy = "recipe")
+    @ManyToMany(mappedBy = "recipes")
     @JsonIgnore
-    private List<Mealplan> mealplan;
-
-    public Recipe(String title, List<String> ingredients, String instructions, List<String> tags) {
-        this.title = title;
-        this.ingredients = ingredients;
-        this.tags = tags;
-    }
+    private List<Mealplan> mealplans;
 }

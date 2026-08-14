@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="/style.css">
 </head>
 <body class="dashboard-body">
-    <#assign customerId = customer.customerId>
+    <#assign customerId = customer.id>
     <#include "_navbar.ftlh">
 
     <div class="dashboard-container">

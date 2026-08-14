@@ -42,10 +42,8 @@ public class MealplanService {
                 mealplan.setTitle(updatedMealplan.getTitle());
                 mealplan.setDescription(updatedMealplan.getDescription());
                 mealplan.setDuration(updatedMealplan.getDuration());
+                mealplan.setSchedule(updatedMealplan.getSchedule());
                 mealplan.setCategory(updatedMealplan.getCategory());
-                if (updatedMealplan.getPrice() != null) {
-                    mealplan.setPrice(updatedMealplan.getPrice());
-                }
                 return mealplanRepository.save(mealplan);
             })
             .orElseThrow(() -> new RuntimeException("Mealplan not found with id: " + id));

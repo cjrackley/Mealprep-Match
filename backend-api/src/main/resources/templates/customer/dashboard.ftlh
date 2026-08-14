@@ -8,6 +8,8 @@
 </head>
 <body class="dashboard-body">
     <#include "_navbar.ftlh">
+    <#import "_content_card.ftlh" as cards>
+    <#assign redirect = "/customer/" + customerId?c + "/dashboard">
 
     <div class="dashboard-container">
         <h3>Welcome back!!</h3>
@@ -15,8 +17,8 @@
         <div class="filter-tags">
             <span class="tag-pill active" data-filter="All">All</span>
             <#assign seenTags = []>
-            <#list recipes as recipe>
-                <#list recipe.tags() as tag>
+            <#list recipes + mealplans + mealkits as card>
+                <#list card.tags() as tag>
                     <#if !seenTags?seq_contains(tag?lower_case)>
                         <#assign seenTags = seenTags + [tag?lower_case]>
                         <span class="tag-pill" data-filter="${tag}">${tag}</span>
@@ -25,40 +27,37 @@
             </#list>
         </div>
 
+        <h4 class="section-title">Recipes</h4>
         <div class="card-grid">
-            <#list recipes as recipe>
-                <div class="service-card" data-id="${recipe.id()?c}" data-tags="<#list recipe.tags() as tag>${tag}<#sep> </#sep></#list>">
-                    <div class="card-body">
-                        <h4>${recipe.title()}</h4>
-                        <p class="provider-name">by ${recipe.providerName()}</p>
-                        <div class="card-tags">
-                            <#list recipe.tags() as tag>
-                                <span class="tag-pill small">${tag}</span>
-                            </#list>
-                        </div>
-                        <#if recipe.reviewCount() gt 0>
-                            <p class="rating">${recipe.averageRating()?string("0.0")} (${recipe.reviewCount()} reviews)</p>
-                        <#else>
-                            <p class="rating">No reviews yet</p>
-                        </#if>
-                    </div>
-                    <#if recipe.subscribed()>
-                        <form method="post" action="/customer/${customerId}/unsubscribe/${recipe.id()?c}">
-                            <button type="submit" class="subscribe-btn subscribed">Unsubscribe</button>
-                        </form>
-                    <#else>
-                        <form method="post" action="/customer/${customerId}/subscribe/${recipe.id()?c}">
-                            <button type="submit" class="subscribe-btn">Subscribe</button>
-                        </form>
-                    </#if>
-                </div>
+            <#list recipes as card>
+                <@cards.contentCard card=card customerId=customerId redirect=redirect />
             </#list>
         </div>
-
         <#if recipes?size == 0>
             <p class="no-results">No recipes are available yet.</p>
         </#if>
-        <p class="no-results" hidden>No recipes match this filter yet.</p>
+
+        <h4 class="section-title">Meal Plans</h4>
+        <div class="card-grid">
+            <#list mealplans as card>
+                <@cards.contentCard card=card customerId=customerId redirect=redirect />
+            </#list>
+        </div>
+        <#if mealplans?size == 0>
+            <p class="no-results">No meal plans are available yet.</p>
+        </#if>
+
+        <h4 class="section-title">Meal Kits</h4>
+        <div class="card-grid">
+            <#list mealkits as card>
+                <@cards.contentCard card=card customerId=customerId redirect=redirect />
+            </#list>
+        </div>
+        <#if mealkits?size == 0>
+            <p class="no-results">No meal kits are available yet.</p>
+        </#if>
+
+        <p class="no-results" hidden>No content matches this filter yet.</p>
     </div>
 
     <script>

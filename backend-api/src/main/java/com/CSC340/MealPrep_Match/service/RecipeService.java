@@ -26,6 +26,10 @@ public class RecipeService {
         return recipeRepository.findByTag(tag);
     }
 
+    public List<Recipe> getByProviderId(Long providerId) {
+        return recipeRepository.findByProvider_Id(providerId);
+    }
+
     public Recipe getById(Long id) {
         return recipeRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found: " + id));

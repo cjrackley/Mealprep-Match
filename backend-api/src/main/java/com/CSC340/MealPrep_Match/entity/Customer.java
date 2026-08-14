@@ -32,7 +32,7 @@ public class Customer {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long customerId;
+    private Long id;
 
     @Column(nullable = false)
     private String name;
@@ -52,12 +52,4 @@ public class Customer {
     @CollectionTable(name = "customer_dietary_preferences", joinColumns = @JoinColumn(name = "customer_id"))
     @Column(name = "preference")
     private List<String> dietaryPreferences;
-
-    public Customer(String name, String email, String passwordHash, String password, List<String> dietaryPreferences){
-        this.name = name;
-        this.email = email;
-        this.passwordHash = passwordHash;
-        this.password = password;
-        this.dietaryPreferences = dietaryPreferences;
-    }
 }

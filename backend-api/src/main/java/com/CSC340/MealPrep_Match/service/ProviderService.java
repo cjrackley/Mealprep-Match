@@ -80,8 +80,8 @@ public class ProviderService {
             if (updatedProvider.getSpecialties() != null) {
                 provider.setSpecialties(updatedProvider.getSpecialties());
             }
-            if (updatedProvider.getCertified() != null) {
-                provider.setCertified(updatedProvider.getCertified());
+            if (updatedProvider.getVerified() != null) {
+                provider.setVerified(updatedProvider.getVerified());
             }
             return providerRepository.save(provider);
         } else {
@@ -94,29 +94,23 @@ public class ProviderService {
         Provider provider = providerRepository.findById(providerId)
                 .orElseThrow(() -> new RuntimeException("Provider not found with id: " + providerId));
 
-        long contentCount = provider.getRecipe().size()
-                + provider.getMealplan().size()
-                + provider.getMealkit().size();
+        long contentCount = provider.getRecipes().size()
+                + provider.getMealplans().size()
+                + provider.getMealkits().size();
 
-        List<Subscription> mealkitSubs = subscriptionRepository.findByMealkit_Provider_Id(providerId);
-        List<Subscription> mealplanSubs = subscriptionRepository.findByMealplan_Provider_Id(providerId);
+        List<Subscription> subscriptions = subscriptionRepository.findByMealkit_Provider_Id(providerId);
+        long subscriptionCount = subscriptions.size();
 
-        long subscriptionCount = mealkitSubs.size() + mealplanSubs.size();
-
-        double totalRevenue = mealkitSubs.stream()
+        double totalRevenue = subscriptions.stream()
                 .map(s -> s.getMealkit().getPrice())
                 .filter(Objects::nonNull)
                 .mapToDouble(Double::doubleValue)
-                .sum()
-                + mealplanSubs.stream()
-                        .map(s -> s.getMealplan().getPrice())
-                        .filter(Objects::nonNull)
-                        .mapToDouble(Double::doubleValue)
-                        .sum();
+                .sum();
 
-        long saveCount = saveRepository.findByRecipe_Provider_Id(providerId).size();
+        long saveCount = saveRepository.findByRecipe_Provider_Id(providerId).size()
+                + saveRepository.findByMealplan_Provider_Id(providerId).size();
 
-        List<Review> reviews = reviewRepository.findByRecipe_Provider_Id(providerId);
+        List<Review> reviews = getProviderReviews(providerId);
         long reviewCount = reviews.size();
 
         double averageRating = reviews.stream()
@@ -134,11 +128,11 @@ public class ProviderService {
                 .orElseThrow(() -> new RuntimeException("Provider not found with id: " + providerId));
 
         List<UploadSummary> uploads = new ArrayList<>();
-        provider.getRecipe().forEach(r -> uploads.add(new UploadSummary("Recipe", r.getTitle(), r.getRecipeId(),
+        provider.getRecipes().forEach(r -> uploads.add(new UploadSummary("Recipe", r.getTitle(), r.getId(),
                 r.getTags() != null ? r.getTags() : List.of())));
-        provider.getMealplan().forEach(m -> uploads.add(new UploadSummary("Mealplan", m.getTitle(), m.getId(),
+        provider.getMealplans().forEach(m -> uploads.add(new UploadSummary("Mealplan", m.getTitle(), m.getId(),
                 m.getCategory() != null ? List.of(m.getCategory()) : List.of())));
-        provider.getMealkit().forEach(k -> uploads.add(new UploadSummary("Mealkit", k.getTitle(), k.getId(),
+        provider.getMealkits().forEach(k -> uploads.add(new UploadSummary("Mealkit", k.getTitle(), k.getId(),
                 k.getCategory() != null ? List.of(k.getCategory()) : List.of())));
 
         return uploads.stream()
@@ -147,17 +141,18 @@ public class ProviderService {
                 .toList();
     }
 
+    @Transactional
     public List<UploadSummary> getAllUploads(Long providerId) {
         Provider provider = providerRepository.findById(providerId)
                 .orElseThrow(() -> new RuntimeException("Provider not found with id: " + providerId));
 
         List<UploadSummary> uploads = new ArrayList<>();
 
-        provider.getRecipe().forEach(r -> uploads.add(new UploadSummary("Recipe", r.getTitle(), r.getRecipeId(),
+        provider.getRecipes().forEach(r -> uploads.add(new UploadSummary("Recipe", r.getTitle(), r.getId(),
                 r.getTags() != null ? r.getTags() : List.of())));
-        provider.getMealplan().forEach(m -> uploads.add(new UploadSummary("Mealplan", m.getTitle(), m.getId(),
+        provider.getMealplans().forEach(m -> uploads.add(new UploadSummary("Mealplan", m.getTitle(), m.getId(),
                 m.getCategory() != null ? List.of(m.getCategory()) : List.of())));
-        provider.getMealkit().forEach(k -> uploads.add(new UploadSummary("Mealkit", k.getTitle(), k.getId(),
+        provider.getMealkits().forEach(k -> uploads.add(new UploadSummary("Mealkit", k.getTitle(), k.getId(),
                 k.getCategory() != null ? List.of(k.getCategory()) : List.of())));
 
         return uploads.stream()
@@ -168,11 +163,19 @@ public class ProviderService {
 
     @Transactional
     public List<Review> getRecentReviews(Long providerId, int limit) {
-        return reviewRepository.findByRecipe_Provider_Id(providerId).stream()
+        return getProviderReviews(providerId).stream()
                 .sorted(Comparator.comparing(Review::getCreatedAt,
                         Comparator.nullsLast(Comparator.reverseOrder())))
                 .limit(limit)
                 .toList();
+    }
+
+    private List<Review> getProviderReviews(Long providerId) {
+        List<Review> reviews = new ArrayList<>();
+        reviews.addAll(reviewRepository.findByRecipe_Provider_Id(providerId));
+        reviews.addAll(reviewRepository.findByMealplan_Provider_Id(providerId));
+        reviews.addAll(reviewRepository.findByMealkit_Provider_Id(providerId));
+        return reviews;
     }
 
     public void deleteProvider(long id) {
@@ -184,7 +187,7 @@ public class ProviderService {
     }
 
     public List<Provider> findBySpecialty(String specialty) {
-        return providerRepository.findBySpecialtiesContainingIgnoreCase(specialty);
+        return providerRepository.findBySpecialty(specialty);
     }
 
     public InputStream getProviderImageStreamInsideTx(Long providerId) {

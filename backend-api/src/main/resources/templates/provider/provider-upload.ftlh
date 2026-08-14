@@ -114,9 +114,9 @@
             </div>
 
             <div class="profile-section">
-                <h4>Delivery Frequency</h4>
+                <h4>Duration</h4>
                 <div class="profile-card">
-                    <input type="text" class="profile-input" name="deliveryFrequency" placeholder="e.g. Weekly" required>
+                    <input type="text" class="profile-input" name="duration" placeholder="e.g. 1 week" required>
                 </div>
             </div>
 

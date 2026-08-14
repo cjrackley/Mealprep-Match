@@ -5,7 +5,9 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -16,12 +18,14 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
-@Table(name = "mealkit")
-@Data
+@Table(name = "mealkits")
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Mealkit {
@@ -31,7 +35,7 @@ public class Mealkit {
     private Long id;
 
     @ManyToOne
-    @JsonIgnoreProperties({"mealkit"})
+    @JsonIgnoreProperties({ "mealkits" })
     @JoinColumn(nullable = false)
     private Provider provider;
 
@@ -39,7 +43,7 @@ public class Mealkit {
     private String title;
 
     @Column(nullable = false)
-    private String deliveryFrequency;
+    private String duration;
 
     @Column(nullable = false)
     private String description;
@@ -48,20 +52,16 @@ public class Mealkit {
 
     private Double price;
 
+    @ElementCollection
+    @CollectionTable(name = "mealkit_ingredients", joinColumns = @JoinColumn(name = "mealkit_id"))
+    @Column(name = "ingredient")
+    private List<String> ingredients;
+
     @ManyToMany
     @JoinTable(
-            name = "mealkit_mealplan",
+            name = "mealkit_recipes",
             joinColumns = @JoinColumn(name = "mealkit_id"),
-            inverseJoinColumns = @JoinColumn(name = "mealplan_id"))
+            inverseJoinColumns = @JoinColumn(name = "recipe_id"))
     @JsonIgnore
-    private List<Mealplan> mealplan;
-
-    public Mealkit(Provider provider, String title, String deliveryFrequency, String description, String category) {
-        this.provider = provider;
-        this.title = title;
-        this.deliveryFrequency = deliveryFrequency;
-        this.description = description;
-        this.category = category;
-    }
-    
+    private List<Recipe> recipes;
 }

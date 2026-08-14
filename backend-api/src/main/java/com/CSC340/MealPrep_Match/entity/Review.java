@@ -27,7 +27,7 @@ public class Review {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long reviewId;
+    private Long id;
 
     @Column(nullable = false)
     private Integer rating;
@@ -46,15 +46,16 @@ public class Review {
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
+    // Exactly one of recipe, mealplan, or mealkit is set (enforced in ReviewService).
     @ManyToOne
-    @JoinColumn(name = "recipe_id", nullable = false)
+    @JoinColumn(name = "recipe_id")
     private Recipe recipe;
 
-    public Review(Integer rating, String comment, Instant createdAt, Customer customer, Recipe recipe) {
-        this.rating = rating;
-        this.comment = comment;
-        this.createdAt = createdAt;
-        this.customer = customer;
-        this.recipe = recipe;
-    }
+    @ManyToOne
+    @JoinColumn(name = "mealplan_id")
+    private Mealplan mealplan;
+
+    @ManyToOne
+    @JoinColumn(name = "mealkit_id")
+    private Mealkit mealkit;
 }

@@ -40,9 +40,10 @@ public class MealkitService {
             return mealkitRepository.findById(id)
                 .map(mealkit -> {
                     mealkit.setTitle(updatedMealkit.getTitle());
-                    mealkit.setDeliveryFrequency(updatedMealkit.getDeliveryFrequency());
+                    mealkit.setDuration(updatedMealkit.getDuration());
                     mealkit.setDescription(updatedMealkit.getDescription());
                     mealkit.setCategory(updatedMealkit.getCategory());
+                    mealkit.setIngredients(updatedMealkit.getIngredients());
                     if (updatedMealkit.getPrice() != null) {
                         mealkit.setPrice(updatedMealkit.getPrice());
                     }

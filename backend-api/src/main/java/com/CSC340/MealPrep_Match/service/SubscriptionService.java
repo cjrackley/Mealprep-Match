@@ -7,13 +7,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.CSC340.MealPrep_Match.entity.Mealkit;
-import com.CSC340.MealPrep_Match.entity.Mealplan;
 import com.CSC340.MealPrep_Match.entity.Customer;
+import com.CSC340.MealPrep_Match.entity.Mealkit;
 import com.CSC340.MealPrep_Match.entity.Subscription;
 import com.CSC340.MealPrep_Match.repository.CustomerRepository;
 import com.CSC340.MealPrep_Match.repository.MealkitRepository;
-import com.CSC340.MealPrep_Match.repository.MealplanRepository;
 import com.CSC340.MealPrep_Match.repository.SubscriptionRepository;
 
 @Service
@@ -22,14 +20,12 @@ public class SubscriptionService {
     private final SubscriptionRepository subscriptionRepository;
     private final CustomerRepository customerRepository;
     private final MealkitRepository mealkitRepository;
-    private final MealplanRepository mealplanRepository;
 
     public SubscriptionService(SubscriptionRepository subscriptionRepository, CustomerRepository customerRepository,
-            MealkitRepository mealkitRepository, MealplanRepository mealplanRepository) {
+            MealkitRepository mealkitRepository) {
         this.subscriptionRepository = subscriptionRepository;
         this.customerRepository = customerRepository;
         this.mealkitRepository = mealkitRepository;
-        this.mealplanRepository = mealplanRepository;
     }
 
     public List<Subscription> getAll() {
@@ -37,7 +33,7 @@ public class SubscriptionService {
     }
 
     public List<Subscription> getByCustomer(Long customerId) {
-        return subscriptionRepository.findByCustomer_CustomerId(customerId);
+        return subscriptionRepository.findByCustomer_Id(customerId);
     }
 
     public Subscription getById(Long id) {
@@ -47,50 +43,27 @@ public class SubscriptionService {
     }
 
     public Subscription create(Subscription subscription) {
-        if (subscription.getCustomer() == null || subscription.getCustomer().getCustomerId() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "customer.customerId is required");
+        if (subscription.getCustomer() == null || subscription.getCustomer().getId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "customer.id is required");
+        }
+        if (subscription.getMealkit() == null || subscription.getMealkit().getId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "mealkit.id is required");
         }
 
-        boolean hasKit = subscription.getMealkit() != null && subscription.getMealkit().getId() != null;
-        boolean hasPlan = subscription.getMealplan() != null && subscription.getMealplan().getId() != null;
-        if (hasKit == hasPlan) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Provide exactly one of mealkit.id or mealplan.id");
-        }
-
-        Customer customer = customerRepository.findById(subscription.getCustomer().getCustomerId())
+        Customer customer = customerRepository.findById(subscription.getCustomer().getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Customer not found: " + subscription.getCustomer().getCustomerId()));
+                        "Customer not found: " + subscription.getCustomer().getId()));
+        Mealkit mealkit = mealkitRepository.findById(subscription.getMealkit().getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Mealkit not found: " + subscription.getMealkit().getId()));
 
-        if (hasKit) {
-            Mealkit mealkit = mealkitRepository.findById(subscription.getMealkit().getId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                            "Mealkit not found: " + subscription.getMealkit().getId()));
-
-            return subscriptionRepository
-                    .findByCustomer_CustomerIdAndMealkit_Id(customer.getCustomerId(), mealkit.getId())
-                    .orElseGet(() -> {
-                        subscription.setCustomer(customer);
-                        subscription.setMealkit(mealkit);
-                        subscription.setMealplan(null);
-                        subscription.setSubscribedAt(Instant.now());
-                        return subscriptionRepository.save(subscription);
-                    });
-        } else {
-            Mealplan mealplan = mealplanRepository.findById(subscription.getMealplan().getId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                            "Mealplan not found: " + subscription.getMealplan().getId()));
-
-            return subscriptionRepository
-                    .findByCustomer_CustomerIdAndMealplan_Id(customer.getCustomerId(), mealplan.getId())
-                    .orElseGet(() -> {
-                        subscription.setCustomer(customer);
-                        subscription.setMealplan(mealplan);
-                        subscription.setMealkit(null);
-                        subscription.setSubscribedAt(Instant.now());
-                        return subscriptionRepository.save(subscription);
-                    });
-        }
+        return subscriptionRepository.findByCustomer_IdAndMealkit_Id(customer.getId(), mealkit.getId())
+                .orElseGet(() -> {
+                    subscription.setCustomer(customer);
+                    subscription.setMealkit(mealkit);
+                    subscription.setSubscribedAt(Instant.now());
+                    return subscriptionRepository.save(subscription);
+                });
     }
 
     public void delete(Long id) {
@@ -100,11 +73,11 @@ public class SubscriptionService {
         subscriptionRepository.deleteById(id);
     }
 
-    public void deleteByCustomerAndRecipe(Long customerId, Long recipeId) {
+    public void deleteByCustomerAndMealkit(Long customerId, Long mealkitId) {
         Subscription subscription = subscriptionRepository
-                .findByCustomer_CustomerIdAndRecipe_RecipeId(customerId, recipeId)
+                .findByCustomer_IdAndMealkit_Id(customerId, mealkitId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Subscription not found for customer " + customerId + " and recipe " + recipeId));
+                        "Subscription not found for customer " + customerId + " and mealkit " + mealkitId));
         subscriptionRepository.delete(subscription);
     }
 }
