@@ -40,7 +40,14 @@
                                             <span class="tag-empty">No tags</span>
                                         </#if>
                                     </div>
-                                    <button>view</button>
+                                    <div class="upload-actions">
+                                        <button>view</button>
+                                        <form method="post"
+                                              action="/provider/uploads/${upload.type?lower_case}/${upload.id?c}/delete"
+                                              onsubmit="return confirm('Delete &quot;${upload.title?js_string}&quot;? Saves, reviews and subscriptions for it are removed too. This cannot be undone.');">
+                                            <button type="submit" class="delete-btn">Delete</button>
+                                        </form>
+                                    </div>
                                 </div>
                             </#list>
                         <#else>

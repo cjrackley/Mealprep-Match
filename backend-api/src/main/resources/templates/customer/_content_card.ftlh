@@ -41,6 +41,14 @@
                 </#list>
             </ul>
         </#if>
+        <#if (card.recipeTitles()![])?size gt 0>
+            <p class="mealkit-list-label">Recipes:</p>
+            <ul class="mealkit-list">
+                <#list card.recipeTitles() as recipeTitle>
+                    <li>${recipeTitle}</li>
+                </#list>
+            </ul>
+        </#if>
     </div>
     <#if card.type() == "mealkit">
         <#if card.actioned()>

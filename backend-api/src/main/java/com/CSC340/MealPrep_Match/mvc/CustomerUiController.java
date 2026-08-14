@@ -110,9 +110,9 @@ public class CustomerUiController {
         model.addAttribute("customerId", id);
         model.addAttribute("recipes", recipeService.getAll().stream()
                 .map(recipe -> recipeCard(recipe, sets)).toList());
-        model.addAttribute("mealplans", mealplanService.getAllMealplans().stream()
+        model.addAttribute("mealplans", mealplanService.getAll().stream()
                 .map(mealplan -> mealplanCard(mealplan, sets)).toList());
-        model.addAttribute("mealkits", mealkitService.getAllMealkits().stream()
+        model.addAttribute("mealkits", mealkitService.getAll().stream()
                 .map(mealkit -> mealkitCard(mealkit, sets)).toList());
         return "customer/dashboard";
     }
@@ -288,7 +288,7 @@ public class CustomerUiController {
     public String providers(@PathVariable Long id, @RequestParam(required = false) String query, Model model) {
         customerService.getById(id);
         List<Provider> providers = (query == null || query.isBlank())
-                ? providerService.getAllProviders()
+                ? providerService.getAll()
                 : providerService.findBySpecialty(query.trim());
         model.addAttribute("customerId", id);
         model.addAttribute("providers", providers);
@@ -299,7 +299,7 @@ public class CustomerUiController {
     @GetMapping("/{id}/providers/{providerId}")
     public String providerProfile(@PathVariable Long id, @PathVariable Long providerId, Model model) {
         customerService.getById(id);
-        Provider provider = requireProvider(providerId);
+        Provider provider = providerService.getById(providerId);
         model.addAttribute("customerId", id);
         model.addAttribute("provider", provider);
         model.addAttribute("stats", providerService.getProviderStats(providerId));
@@ -309,12 +309,12 @@ public class CustomerUiController {
     @GetMapping("/{id}/providers/{providerId}/uploads")
     public String providerUploads(@PathVariable Long id, @PathVariable Long providerId, Model model) {
         customerService.getById(id);
-        Provider provider = requireProvider(providerId);
+        Provider provider = providerService.getById(providerId);
         ActionSets sets = actionSets(id);
         List<ContentCard> uploads = new ArrayList<>();
         recipeService.getByProviderId(providerId).forEach(recipe -> uploads.add(recipeCard(recipe, sets)));
-        mealplanService.getMealplansByProviderId(providerId).forEach(mealplan -> uploads.add(mealplanCard(mealplan, sets)));
-        mealkitService.getMealkitByProviderId(providerId).forEach(mealkit -> uploads.add(mealkitCard(mealkit, sets)));
+        mealplanService.getByProviderId(providerId).forEach(mealplan -> uploads.add(mealplanCard(mealplan, sets)));
+        mealkitService.getByProviderId(providerId).forEach(mealkit -> uploads.add(mealkitCard(mealkit, sets)));
         model.addAttribute("customerId", id);
         model.addAttribute("provider", provider);
         model.addAttribute("uploads", uploads);
@@ -346,6 +346,7 @@ public class CustomerUiController {
                 providerName(recipe.getProvider()), providerId(recipe.getProvider()),
                 recipe.getTags() != null ? recipe.getTags() : List.of(),
                 recipe.getIngredients() != null ? recipe.getIngredients() : List.of(),
+                List.of(),
                 null, null, null, null,
                 averageRating(reviews), reviews.size(),
                 sets.savedRecipeIds().contains(recipe.getId()));
@@ -357,6 +358,7 @@ public class CustomerUiController {
                 providerName(mealplan.getProvider()), providerId(mealplan.getProvider()),
                 mealplan.getCategory() != null ? List.of(mealplan.getCategory()) : List.of(),
                 List.of(),
+                recipeTitles(mealplan.getRecipes()),
                 mealplan.getDescription(), mealplan.getSchedule(), mealplan.getDuration(), null,
                 averageRating(reviews), reviews.size(),
                 sets.savedMealplanIds().contains(mealplan.getId()));
@@ -368,6 +370,7 @@ public class CustomerUiController {
                 providerName(mealkit.getProvider()), providerId(mealkit.getProvider()),
                 mealkit.getCategory() != null ? List.of(mealkit.getCategory()) : List.of(),
                 mealkit.getIngredients() != null ? mealkit.getIngredients() : List.of(),
+                recipeTitles(mealkit.getRecipes()),
                 mealkit.getDescription(), null, mealkit.getDuration(), mealkit.getPrice(),
                 averageRating(reviews), reviews.size(),
                 sets.subscribedMealkitIds().contains(mealkit.getId()));
@@ -393,6 +396,13 @@ public class CustomerUiController {
         return "none";
     }
 
+    private List<String> recipeTitles(List<Recipe> recipes) {
+        if (recipes == null) {
+            return List.of();
+        }
+        return recipes.stream().map(Recipe::getTitle).toList();
+    }
+
     private String providerName(Provider provider) {
         return provider != null ? provider.getName() : "Unknown Provider";
     }
@@ -403,14 +413,6 @@ public class CustomerUiController {
 
     private double averageRating(List<Review> reviews) {
         return reviews.stream().mapToInt(Review::getRating).average().orElse(0.0);
-    }
-
-    private Provider requireProvider(Long providerId) {
-        Provider provider = providerService.findById(providerId);
-        if (provider == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Provider not found: " + providerId);
-        }
-        return provider;
     }
 
     // Only allows redirect targets within this customer's own pages.

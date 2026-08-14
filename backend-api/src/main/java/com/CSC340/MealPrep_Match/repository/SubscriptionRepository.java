@@ -11,6 +11,8 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
 
     List<Subscription> findByCustomer_Id(Long customerId);
 
+    List<Subscription> findByMealkit_Id(Long mealkitId);
+
     List<Subscription> findByMealkit_Provider_Id(Long providerId);
 
     Optional<Subscription> findByCustomer_IdAndMealkit_Id(Long customerId, Long mealkitId);

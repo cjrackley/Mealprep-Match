@@ -2,8 +2,12 @@ package com.CSC340.MealPrep_Match.mvc;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -20,18 +24,15 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import com.CSC340.MealPrep_Match.entity.Provider;
-import com.CSC340.MealPrep_Match.entity.Customer;
 import com.CSC340.MealPrep_Match.entity.Mealkit;
 import com.CSC340.MealPrep_Match.entity.Mealplan;
 import com.CSC340.MealPrep_Match.entity.Recipe;
-import com.CSC340.MealPrep_Match.service.CustomerService;
+import com.CSC340.MealPrep_Match.service.ContentDeletionService;
 import com.CSC340.MealPrep_Match.service.MealkitService;
 import com.CSC340.MealPrep_Match.service.MealplanService;
 import com.CSC340.MealPrep_Match.service.ProviderService;
 import com.CSC340.MealPrep_Match.service.RecipeService;
 import com.CSC340.MealPrep_Match.service.ReviewService;
-import com.CSC340.MealPrep_Match.service.SaveService;
-import com.CSC340.MealPrep_Match.service.SubscriptionService;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -43,21 +44,19 @@ public class ProviderUiController {
     private final MealplanService mealplanService;
     private final MealkitService mealkitService;
     private final ReviewService reviewService;
-    private final SaveService saveService;
-    private final SubscriptionService subscriptionService;
+    private final ContentDeletionService contentDeletionService;
 
     private final TransactionTemplate transactionTemplate;
 
     public ProviderUiController(ProviderService providerService, RecipeService recipeService,
             MealplanService mealplanService, MealkitService mealkitService, ReviewService reviewService,
-            SaveService saveService, SubscriptionService subscriptionService, TransactionTemplate transactionTemplate) {
+            ContentDeletionService contentDeletionService, TransactionTemplate transactionTemplate) {
         this.providerService = providerService;
         this.recipeService = recipeService;
         this.mealplanService = mealplanService;
         this.mealkitService = mealkitService;
         this.reviewService = reviewService;
-        this.saveService = saveService;
-        this.subscriptionService = subscriptionService;
+        this.contentDeletionService = contentDeletionService;
         this.transactionTemplate = transactionTemplate;
     }
 
@@ -69,11 +68,13 @@ public class ProviderUiController {
 
     @PostMapping("/signup")
     public String registerProvider(Provider provider, MultipartFile profilePictureFile, HttpSession session) {
-        Provider created = providerService.createProvider(provider);
-        try {
-            providerService.saveProviderProfilePicture(created.getId(), profilePictureFile.getInputStream());
-        } catch (IOException e) {
-            e.printStackTrace();
+        Provider created = providerService.create(provider);
+        if (profilePictureFile != null && !profilePictureFile.isEmpty()) {
+            try {
+                providerService.saveProviderProfilePicture(created.getId(), profilePictureFile.getInputStream());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
         session.setAttribute("providerId", created.getId());
         return "redirect:/provider/dashboard";
@@ -101,7 +102,7 @@ public class ProviderUiController {
             return "redirect:/provider/login";
         }
 
-        Provider provider = providerService.findById(providerId);
+        Provider provider = providerService.getById(providerId);
         model.addAttribute("provider", provider);
         model.addAttribute("stats", providerService.getProviderStats(providerId));
         model.addAttribute("recentUploads", providerService.getRecentUploads(providerId, 5));
@@ -117,7 +118,7 @@ public class ProviderUiController {
             return "redirect:/provider/login";
         }
 
-        Provider provider = providerService.findById(providerId);
+        Provider provider = providerService.getById(providerId);
         model.addAttribute("provider", provider);
 
         return "/provider/provider-profile";
@@ -130,7 +131,7 @@ public class ProviderUiController {
             return "redirect:/provider/login";
         }
 
-        Provider provider = providerService.findById(providerId);
+        Provider provider = providerService.getById(providerId);
         model.addAttribute("provider", provider);
         return "/provider/provider-profile-customization";
     }
@@ -148,7 +149,7 @@ public class ProviderUiController {
                 e.printStackTrace();
             }
         }
-        providerService.updateProviderInfo(providerId, provider);
+        providerService.update(providerId, provider);
         return "redirect:/provider/profile";
     }
 
@@ -178,7 +179,7 @@ public class ProviderUiController {
             return "redirect:/provider/login";
         }
 
-        Provider provider = providerService.findById(providerId);
+        Provider provider = providerService.getById(providerId);
         model.addAttribute("provider", provider);
         model.addAttribute("uploads", providerService.getAllUploads(providerId));
 
@@ -186,11 +187,13 @@ public class ProviderUiController {
     }
 
     @GetMapping("/uploads/create")
-    public String createUpload(HttpSession session) {
+    public String createUpload(HttpSession session, Model model) {
         Long providerId = (Long) session.getAttribute("providerId");
         if (providerId == null) {
             return "redirect:/provider/login";
         }
+        // Mealplans and mealkits are assembled from recipes this provider already published.
+        model.addAttribute("recipes", recipeService.getByProviderId(providerId));
         return "provider/provider-upload";
     }
 
@@ -205,7 +208,7 @@ public class ProviderUiController {
         }
 
         Recipe recipe = new Recipe();
-        recipe.setProvider(providerService.findById(providerId));
+        recipe.setProvider(providerService.getById(providerId));
         recipe.setTitle(title);
         recipe.setInstructions(instructions);
         recipe.setIngredients(splitCsv(ingredients));
@@ -216,28 +219,85 @@ public class ProviderUiController {
     }
 
     @PostMapping("/uploads/create/mealplan")
-    public String createMealplan(HttpSession session, Mealplan mealplan) {
+    public String createMealplan(HttpSession session, @RequestParam String title,
+            @RequestParam String duration,
+            @RequestParam(required = false) String description,
+            @RequestParam(required = false) String schedule,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) List<Long> recipeIds) {
         Long providerId = (Long) session.getAttribute("providerId");
         if (providerId == null) {
             return "redirect:/provider/login";
         }
 
-        mealplan.setProvider(providerService.findById(providerId));
-        mealplanService.createMealplan(mealplan);
+        Mealplan mealplan = new Mealplan();
+        mealplan.setProvider(providerService.getById(providerId));
+        mealplan.setTitle(title);
+        mealplan.setDuration(duration);
+        mealplan.setDescription(description);
+        mealplan.setSchedule(schedule);
+        mealplan.setCategory(category);
+        mealplan.setRecipes(ownRecipes(recipeIds, providerId));
+        mealplanService.create(mealplan);
 
         return "redirect:/provider/uploads";
     }
 
     @PostMapping("/uploads/create/mealkit")
-    public String createMealkit(HttpSession session, Mealkit mealkit) {
+    public String createMealkit(HttpSession session, @RequestParam String title,
+            @RequestParam String duration,
+            @RequestParam String description,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Double price,
+            @RequestParam(required = false) String ingredients,
+            @RequestParam(required = false) List<Long> recipeIds) {
         Long providerId = (Long) session.getAttribute("providerId");
         if (providerId == null) {
             return "redirect:/provider/login";
         }
 
-        mealkit.setProvider(providerService.findById(providerId));
-        mealkitService.createMealkit(mealkit);
+        Mealkit mealkit = new Mealkit();
+        mealkit.setProvider(providerService.getById(providerId));
+        mealkit.setTitle(title);
+        mealkit.setDuration(duration);
+        mealkit.setDescription(description);
+        mealkit.setCategory(category);
+        mealkit.setPrice(price);
+        // A kit's ingredient list is curated by the provider, not derived from its recipes.
+        mealkit.setIngredients(splitCsv(ingredients));
+        mealkit.setRecipes(ownRecipes(recipeIds, providerId));
+        mealkitService.create(mealkit);
 
+        return "redirect:/provider/uploads";
+    }
+
+    @PostMapping("/uploads/recipe/{recipeId}/delete")
+    public String deleteRecipe(HttpSession session, @PathVariable Long recipeId) {
+        Long providerId = (Long) session.getAttribute("providerId");
+        if (providerId == null) {
+            return "redirect:/provider/login";
+        }
+        contentDeletionService.deleteRecipe(recipeId, providerId);
+        return "redirect:/provider/uploads";
+    }
+
+    @PostMapping("/uploads/mealplan/{mealplanId}/delete")
+    public String deleteMealplan(HttpSession session, @PathVariable Long mealplanId) {
+        Long providerId = (Long) session.getAttribute("providerId");
+        if (providerId == null) {
+            return "redirect:/provider/login";
+        }
+        contentDeletionService.deleteMealplan(mealplanId, providerId);
+        return "redirect:/provider/uploads";
+    }
+
+    @PostMapping("/uploads/mealkit/{mealkitId}/delete")
+    public String deleteMealkit(HttpSession session, @PathVariable Long mealkitId) {
+        Long providerId = (Long) session.getAttribute("providerId");
+        if (providerId == null) {
+            return "redirect:/provider/login";
+        }
+        contentDeletionService.deleteMealkit(mealkitId, providerId);
         return "redirect:/provider/uploads";
     }
 
@@ -250,6 +310,20 @@ public class ProviderUiController {
         }
         reviewService.reply(reviewId, providerId, reply);
         return "redirect:/provider/dashboard";
+    }
+
+    /**
+     * Resolves the recipe ids posted by a picker, keeping only recipes this provider owns
+     * so a crafted form cannot pull another provider's recipe into a plan or kit.
+     */
+    private List<Recipe> ownRecipes(List<Long> recipeIds, Long providerId) {
+        if (recipeIds == null || recipeIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        Set<Long> requested = new HashSet<>(recipeIds);
+        return recipeService.getByProviderId(providerId).stream()
+                .filter(recipe -> requested.contains(recipe.getId()))
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     private List<String> splitCsv(String input) {

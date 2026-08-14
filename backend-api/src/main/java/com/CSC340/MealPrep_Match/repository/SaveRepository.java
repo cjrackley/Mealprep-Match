@@ -15,6 +15,10 @@ public interface SaveRepository extends JpaRepository<Save, Long> {
 
     Optional<Save> findByCustomer_IdAndMealplan_Id(Long customerId, Long mealplanId);
 
+    List<Save> findByRecipe_Id(Long recipeId);
+
+    List<Save> findByMealplan_Id(Long mealplanId);
+
     List<Save> findByRecipe_Provider_Id(Long providerId);
 
     List<Save> findByMealplan_Provider_Id(Long providerId);

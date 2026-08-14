@@ -334,7 +334,51 @@ body.dashboard {
     gap: 8px;
 }
 
+.upload-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.upload-actions form {
+    margin: 0;
+}
+
+.upload-item .delete-btn {
+    color: #b3261e;
+}
+
+.upload-item .delete-btn:hover,
+.upload-item .delete-btn:active {
+    color: #7f1a15;
+}
+
 /* Upload create page */
+.recipe-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+    margin-bottom: 8px;
+}
+
+.recipe-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.recipe-option input[type="checkbox"] {
+    accent-color: #2e8b57;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
 .type-picker {
     display: flex;
     gap: 12px;

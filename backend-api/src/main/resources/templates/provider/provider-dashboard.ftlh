@@ -102,13 +102,13 @@
                 </div>
 
                 <div class="stat">
-                    <h4>July Revenue</h4>
-                    <p></p>
+                    <h4>This Month's Revenue</h4>
+                    <p>$${stats.monthlyRevenue?string("0.00")}</p>
                 </div>
 
                 <div class="stat">
                     <h4>Total Revenue</h4>
-                    <p></p>
+                    <p>$${stats.totalRevenue?string("0.00")}</p>
                 </div>
 
             </div>
