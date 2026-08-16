@@ -28,10 +28,6 @@ public class SubscriptionService {
         this.mealkitRepository = mealkitRepository;
     }
 
-    public List<Subscription> getAll() {
-        return subscriptionRepository.findAll();
-    }
-
     public List<Subscription> getByCustomer(Long customerId) {
         return subscriptionRepository.findByCustomer_Id(customerId);
     }

@@ -170,13 +170,6 @@ public class ProviderService {
         return reviews;
     }
 
-    public void delete(Long id) {
-        if (!providerRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Provider not found: " + id);
-        }
-        providerRepository.deleteById(id);
-    }
-
     public Provider findByEmail(String email) {
         return providerRepository.findByEmail(email);
     }

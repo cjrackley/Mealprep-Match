@@ -1,7 +1,5 @@
 package com.CSC340.MealPrep_Match.service;
 
-import java.util.List;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -19,10 +17,6 @@ public class CustomerService {
     public CustomerService(CustomerRepository customerRepository, PasswordEncoder passwordEncoder) {
         this.customerRepository = customerRepository;
         this.passwordEncoder = passwordEncoder;
-    }
-
-    public List<Customer> getAll() {
-        return customerRepository.findAll();
     }
 
     public Customer getById(Long id) {
@@ -60,12 +54,5 @@ public class CustomerService {
             customer.setDietaryPreferences(updates.getDietaryPreferences());
         }
         return customerRepository.save(customer);
-    }
-
-    public void delete(Long id) {
-        if (!customerRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Customer not found: " + id);
-        }
-        customerRepository.deleteById(id);
     }
 }

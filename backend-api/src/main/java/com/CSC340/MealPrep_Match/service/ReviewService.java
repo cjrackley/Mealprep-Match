@@ -41,10 +41,6 @@ public class ReviewService {
         this.subscriptionRepository = subscriptionRepository;
     }
 
-    public List<Review> getAll() {
-        return reviewRepository.findAll();
-    }
-
     public List<Review> getByRecipe(Long recipeId) {
         return reviewRepository.findByRecipe_Id(recipeId);
     }
