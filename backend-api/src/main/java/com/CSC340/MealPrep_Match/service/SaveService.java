@@ -32,10 +32,6 @@ public class SaveService {
         this.mealplanRepository = mealplanRepository;
     }
 
-    public List<Save> getAll() {
-        return saveRepository.findAll();
-    }
-
     public List<Save> getByCustomer(Long customerId) {
         return saveRepository.findByCustomer_Id(customerId);
     }
